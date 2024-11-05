@@ -8,8 +8,7 @@
 
 </p>
 
-
-<h4 align="center">This is the official repository of the paper <a href="https://arxiv.org/abs/2403.15789">In-Context Matting</a>.</h4>
+<h4 align="center">What you see is a copy of the official repository of the paper <a href="https://arxiv.org/abs/2403.15789">In-Context Matting</a>.</h4>
 
 <h4 align="center">Details of the model architecture and experimental results can be found in <a href="https://tiny-smart.github.io/icm.github.io/">our homepage</a>.</h4>
 
