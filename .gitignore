@@ -9,3 +9,5 @@ pretrained_models/
 datasets/
 lightning_logs/
 old_logs/
+
+*.pth
