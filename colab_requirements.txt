@@ -1,0 +1,7 @@
+diffusers==0.18.1
+omegaconf==2.3.0
+pytorch-lightning==1.4.2
+jax==0.4.23
+jaxlib==0.4.23
+xformers
+torchmetrics==0.6.0
