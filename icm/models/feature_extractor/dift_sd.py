@@ -370,7 +370,7 @@ class OneStepSDPipeline(StableDiffusionPipeline):
 
 class SDFeaturizer(nn.Module):
     def __init__(self, sd_id='pretrained_models/stable-diffusion-2-1',
-                 load_local=True, ):
+                 load_local=False):
         super().__init__()
         # sd_id="stabilityai/stable-diffusion-2-1", load_local=False):
         unet = MyUNet2DConditionModel.from_pretrained(
