@@ -370,14 +370,14 @@ class OneStepSDPipeline(StableDiffusionPipeline):
 
 class SDFeaturizer(nn.Module):
     def __init__(self, sd_id='pretrained_models/stable-diffusion-2-1',
-                 load_local=False):
+                 load_local=True):
         super().__init__()
         # sd_id="stabilityai/stable-diffusion-2-1", load_local=False):
         unet = MyUNet2DConditionModel.from_pretrained(
             sd_id,
             subfolder="unet",
             # output_loading_info=True,
-            local_files_only=load_local,
+            local_files_only=True,
             low_cpu_mem_usage=True,
             use_safetensors=False,
             # torch_dtype=torch.float16,
@@ -387,7 +387,7 @@ class SDFeaturizer(nn.Module):
             sd_id,
             unet=unet,
             safety_checker=None,
-            local_files_only=load_local,
+            local_files_only=True,
             low_cpu_mem_usage=True,
             use_safetensors=False,
             # torch_dtype=torch.float16,
@@ -494,7 +494,7 @@ class FeatureExtractor(nn.Module):
                  ensemble_size=8):
         super().__init__()
         
-        self.dift_sd = SDFeaturizer(sd_id=sd_id, load_local=load_local)
+        self.dift_sd = SDFeaturizer(sd_id=sd_id, load_local=True)
         # register buffer for prompt embedding
         self.register_buffer("prompt_embeds", self.dift_sd.pipe._encode_prompt(
             prompt='',
