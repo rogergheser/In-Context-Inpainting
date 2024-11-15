@@ -29,7 +29,7 @@ model:
       target: icm.models.feature_extractor.dift_sd.FeatureExtractor
       params:
         sd_id: stabilityai/stable-diffusion-2-1
-        load_local: true
+        load_local: false
         if_softmax: 1
         feature_index_cor: 1
         feature_index_matting:
