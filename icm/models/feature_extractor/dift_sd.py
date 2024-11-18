@@ -377,7 +377,7 @@ class SDFeaturizer(nn.Module):
             sd_id,
             subfolder="unet",
             # output_loading_info=True,
-            local_files_only=True,
+            local_files_only=False, # load_local
             low_cpu_mem_usage=True,
             use_safetensors=False,
             # torch_dtype=torch.float16,
@@ -387,7 +387,7 @@ class SDFeaturizer(nn.Module):
             sd_id,
             unet=unet,
             safety_checker=None,
-            local_files_only=True,
+            local_files_only=False, # load_local
             low_cpu_mem_usage=True,
             use_safetensors=False,
             # torch_dtype=torch.float16,
