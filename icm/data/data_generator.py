@@ -923,8 +923,9 @@ class InContextDataset(Dataset):
             # delet image_name from context_set (dict)
             context_set = [x for x in context_set if x[0] != image_name]
             
-        (reference_image_name, context_dataset_name) = context_set[np.random.randint(
-            len(context_set))]
+        # (reference_image_name, context_dataset_name) = context_set[np.random.randint(
+        #     len(context_set))]
+        reference_image_name, context_dataset_name = context_set[0]
         reference_image_sample = self.get_sample(
             reference_image_name, context_dataset_name)
 
