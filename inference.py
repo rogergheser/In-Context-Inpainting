@@ -6,6 +6,7 @@ import torch
 from pytorch_lightning import Trainer, seed_everything
 import os
 from tqdm import tqdm
+from icm.data.data_generator import CustomDataset
 
 def load_model_from_config(config, ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
@@ -79,24 +80,54 @@ if __name__ == '__main__':
     
     cfg_data = cfg.get('data')
 
-    data = instantiate_from_config(cfg_data)
-    data.setup()
+    # data = instantiate_from_config(cfg_data)
+    # data.setup()
 
     """=== Init model ==="""
     cfg_model = cfg.get('model')
 
     # model = instantiate_from_config(cfg_model)
-    model = load_model_from_config(cfg_model, args.checkpoint, verbose=True)
+    model = load_model_from_config(cfg_model, 'model.pth', verbose=True)
 
+
+    
+    # # Usage example for training:
+    # train_dataset = CustomDataset(image_dir='path/to/train/images', mask_dir='path/to/train/masks', phase='train')
+    # train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=4)
+
+    # Usage example for inference:
+    inference_dataset = CustomDataset(image_dir='datasets/test_inference_backpack/images', mask_dir='datasets/test_inference_backpack/alpha', phase='inference')
+    inference_dataloader = torch.utils.data.DataLoader(inference_dataset, batch_size=6, shuffle=False, num_workers=4)
+
+    # Inference loop example:
+    model.eval()
+    results = []
+
+    with torch.no_grad():
+        for batch in inference_dataloader:
+            images = batch['image']
+            single_mask = batch['alpha'][:1]  # Use only the first mask in the batch
+            single_mask = single_mask.repeat(images.size(0), 1, 1, 1)  # Repeat the mask for each image
+            
+            # Your inference code here
+            output_masks = model(images, single_mask)
+            
+            results.extend(output_masks)
+
+    # Process results as needed
+
+    exit()
     ## Can I use it from here for inference?
     # TODO Understand the batch structure and how to correctly instantiate a batch
-    batch = {
-        'reference_iamge': ,
-        'guidance_on_reference_image' : ,
-        'source_image': ,
-        'alpha': ,
-        'trimap': ,
-    }
+
+    # batch = {
+    #     'reference_iamge': ,
+    #     'guidance_on_reference_image' : ,
+    #     'source_image': ,
+    #     'alpha': ,
+    #     'trimap': ,
+    # }
+
     batch_idx = 0
     outputs, cross_map, self_map = model(reference_images, guidance_on_reference_image, source_images)
     ##

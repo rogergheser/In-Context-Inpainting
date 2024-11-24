@@ -970,3 +970,52 @@ class InContextDataset(Dataset):
         
         return sample
 
+
+class CustomDataset(Dataset):
+    def _init_(self, image_dir, mask_dir, crop_size=1024, norm_type='imagenet', phase='train'):
+        self.image_dir = image_dir
+        self.mask_dir = mask_dir
+        self.crop_size = crop_size
+        self.phase = phase
+        
+        self.img_list = sorted([f for f in os.listdir(image_dir) if f.endswith(('.png', '.jpg', '.jpeg'))])
+        self.mask_list = sorted([f for f in os.listdir(mask_dir) if f.endswith(('.png', '.jpg', '.jpeg'))])
+        
+        if phase == 'train' and len(self.img_list) != len(self.mask_list):
+            raise ValueError("The number of images and masks should be the same for training.")
+        
+        self.transform = transforms.Compose([
+            CropResize((self.crop_size, self.crop_size)),
+            ToTensor(phase="val", norm_type=norm_type)
+        ])
+
+    def _getitem_(self, idx):
+        cv2.setNumThreads(0)
+        
+        # Load image
+        image = cv2.imread(os.path.join(self.image_dir, self.img_list[idx]))
+        
+        # Load mask (during training) or use the first mask (during inference)
+        if self.phase == 'train':
+            mask = cv2.imread(os.path.join(self.mask_dir, self.mask_list[idx]), 0) / 255.0
+        else:
+            mask = cv2.imread(os.path.join(self.mask_dir, self.mask_list[0]), 0) / 255.0
+        
+        # Resize mask to match image size if necessary
+        if image.shape[:2] != mask.shape[:2]:
+            mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
+        
+        sample = {
+            'image': image,
+            'alpha': mask,
+            'image_name': self.img_list[idx],
+            'alpha_shape': mask.shape
+        }
+        
+        # Apply transformations
+        sample = self.transform(sample)
+        
+        return sample
+
+    def _len_(self):
+        return len(self.img_list)
