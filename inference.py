@@ -87,7 +87,7 @@ if __name__ == '__main__':
     cfg_model = cfg.get('model')
 
     # model = instantiate_from_config(cfg_model)
-    model = load_model_from_config(cfg_model, 'model.pth', verbose=True)
+    model = load_model_from_config(cfg_model, args.checkpoint, verbose=True)
 
 
     
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     # train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=4)
 
     # Usage example for inference:
-    inference_dataset = CustomDataset(image_dir='datasets/test_inference_backpack/images', mask_dir='datasets/test_inference_backpack/alpha', phase='inference')
+    inference_dataset = CustomDataset(image_dir='datasets/test_inference_backpack/image', mask_dir='datasets/test_inference_backpack/alpha', phase='inference')
     inference_dataloader = torch.utils.data.DataLoader(inference_dataset, batch_size=6, shuffle=False, num_workers=4)
 
     # Inference loop example:

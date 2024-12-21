@@ -967,12 +967,12 @@ class InContextDataset(Dataset):
         # modify 'image' to 'source_image'
         sample['source_image'] = sample['image']
         del sample['image']
-        
+
         return sample
 
 
 class CustomDataset(Dataset):
-    def _init_(self, image_dir, mask_dir, crop_size=1024, norm_type='imagenet', phase='train'):
+    def __init__(self, image_dir, mask_dir, crop_size=1024, norm_type='imagenet', phase='train'):
         self.image_dir = image_dir
         self.mask_dir = mask_dir
         self.crop_size = crop_size
@@ -989,33 +989,56 @@ class CustomDataset(Dataset):
             ToTensor(phase="val", norm_type=norm_type)
         ])
 
-    def _getitem_(self, idx):
+    def __getitem__(self, idx):
         cv2.setNumThreads(0)
-        
-        # Load image
-        image = cv2.imread(os.path.join(self.image_dir, self.img_list[idx]))
-        
-        # Load mask (during training) or use the first mask (during inference)
-        if self.phase == 'train':
-            mask = cv2.imread(os.path.join(self.mask_dir, self.mask_list[idx]), 0) / 255.0
-        else:
-            mask = cv2.imread(os.path.join(self.mask_dir, self.mask_list[0]), 0) / 255.0
-        
-        # Resize mask to match image size if necessary
-        if image.shape[:2] != mask.shape[:2]:
-            mask = cv2.resize(mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_NEAREST)
-        
-        sample = {
-            'image': image,
-            'alpha': mask,
-            'image_name': self.img_list[idx],
-            'alpha_shape': mask.shape
-        }
-        
-        # Apply transformations
+
+        image_dir, label_dir, trimap_dir, merged_ext, alpha_ext, trimap_ext = get_dir_ext(None)
+        image_path = os.path.join(image_dir, image_name + merged_ext)
+        label_path = os.path.join(label_dir, image_name + alpha_ext)
+        trimap_path = os.path.join(trimap_dir, image_name + trimap_ext)
+
+        image = cv2.imread(image_path)
+        alpha = cv2.imread(label_path, 0)/255.
+        trimap = cv2.imread(trimap_path, 0).astype(np.float32)
+        mask = (trimap >= 170).astype(np.float32)
+        image_name = os.path.split(image_path)[-1]
+            
+        sample = {'image': image, 'alpha': alpha, 'trimap': trimap,
+                'mask': mask, 'image_name': image_name, 'alpha_shape': alpha.shape, 'dataset_name': "ICM57"}
+
         sample = self.transform(sample)
         
-        return sample
+        # modify 'image' to 'source_image'
+        sample['source_image'] = sample['image']
+        del sample['image']
 
-    def _len_(self):
+        image_name, image_info = self.dataset[idx]
+
+        # get image sample
+        dataset_name = image_info['dataset_name']
+        image_sample = self.get_sample(image_name, dataset_name)
+
+        # get context image
+        class_name = str(
+            image_info['class'])+'-'+str(image_info['sub_class'])+'-'+str(image_info['HalfOrFull'])
+        
+        context_set = self.image_class_dict[class_name]
+        if len(context_set) > 2:
+            # delet image_name from context_set (dict)
+            context_set = [x for x in context_set if x[0] != image_name]
+            
+        # (reference_image_name, context_dataset_name) = context_set[np.random.randint(
+        #     len(context_set))]
+        reference_image_name, context_dataset_name = context_set[0]
+        reference_image_sample = self.get_sample(
+            reference_image_name, context_dataset_name)
+
+        # merge image and context
+        image_sample['reference_image'] = reference_image_sample['source_image']
+        image_sample['guidance_on_reference_image'] = reference_image_sample['alpha']
+        image_sample['reference_image_name'] = reference_image_sample['image_name']
+
+        return image_sample
+
+    def __len__(self):
         return len(self.img_list)
