@@ -1,6 +1,6 @@
 <h1 align="center">In-Context Matting [CVPR 2024, Highlight]</h1>
 DISCLAIMER:
-THE FOLLOWING IS A COPY OF THE [TRUE REPOSITORY](https://github.com/tiny-smart/in-context-matting)
+THE FOLLOWING IS A COPY OF THE <a href="https://github.com/tiny-smart/in-context-matting">TRUE REPOSITORY</a>
 
 <p align="center">
 <a href="https://arxiv.org/pdf/2403.15789.pdf"><img  src="demo/src/icon/arXiv-Paper.svg" ></a>
