@@ -1,0 +1,3 @@
+[submodule "blended-latent-diffusion"]
+	path = blended-latent-diffusion
+	url = https://github.com/omriav/blended-latent-diffusion.git
