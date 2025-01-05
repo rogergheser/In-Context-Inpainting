@@ -111,7 +111,6 @@ if __name__ == '__main__':
     # set gpu = 1
     cfg_trainer.gpus = 1
 
-
     # omegaconf to dict
     cfg_trainer = OmegaConf.to_container(cfg_trainer)
     cfg_trainer.pop('cfg_callbacks') if 'cfg_callbacks' in cfg_trainer else None
