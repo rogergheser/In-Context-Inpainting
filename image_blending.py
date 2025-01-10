@@ -44,6 +44,9 @@ class BlendedLatentDiffusion:
             "--batch_size", type=int, default=4, help="The number of images to generate"
         )
         parser.add_argument(
+            "--strength", type=float, default=0.5, help="The strength of the guiding image"
+        )
+        parser.add_argument(
             "--blending_start_percentage",
             type=float,
             default=0.25,
@@ -67,7 +70,6 @@ class BlendedLatentDiffusion:
         self.tokenizer = pipe.tokenizer
         self.text_encoder = pipe.text_encoder.to(self.args.device)
         self.unet = pipe.unet.to(self.args.device)
-        self.get_timesteps = StableDiffusionImg2ImgPipeline.from_pipe(pipe).get_timesteps
 
         self.scheduler = DDIMScheduler(
             beta_start=0.00085,
@@ -89,7 +91,7 @@ class BlendedLatentDiffusion:
         width=512,
         num_inference_steps=50,
         guidance_scale=7.5,
-        strength=0.8,
+        strength=0.5,
         generator=torch.manual_seed(42),
         blending_percentage=0.25
     ):
@@ -101,25 +103,24 @@ class BlendedLatentDiffusion:
         latent_mask, org_mask = self._read_mask(mask_path)
 
         # Conditioning text processing
-        if prompts[0] != "":
-            text_input = self.tokenizer(
-                prompts,
-                padding="max_length",
-                max_length=self.tokenizer.model_max_length,
-                truncation=True,
-                return_tensors="pt",
-            )
-            text_embeddings = self.text_encoder(text_input.input_ids.to(self.args.device))[0]
+        text_input = self.tokenizer(
+            prompts,
+            padding="max_length",
+            max_length=self.tokenizer.model_max_length,
+            truncation=True,
+            return_tensors="pt",
+        )
+        text_embeddings = self.text_encoder(text_input.input_ids.to(self.args.device))[0]
 
-            max_length = text_input.input_ids.shape[-1]
-            uncond_input = self.tokenizer(
-                [""] * batch_size,
-                padding="max_length",
-                max_length=max_length,
-                return_tensors="pt",
-            )
-            uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(self.args.device))[0]
-            text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = self.tokenizer(
+            [""] * batch_size,
+            padding="max_length",
+            max_length=max_length,
+            return_tensors="pt",
+        )
+        uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(self.args.device))[0]
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
         # Foreground image processing
         if guiding_image is not None: # If guiding image is provided
@@ -128,28 +129,35 @@ class BlendedLatentDiffusion:
             guiding_image = np.array(guiding_image)[:, :, :3]
             init_latents = self._image2latent(guiding_image).clone()
             init_latents = torch.cat([init_latents] * batch_size)
+            init_latents = init_latents.to(self.args.device).half()
 
             # Add noise to the guiding image
             self.scheduler.set_timesteps(num_inference_steps)
             timesteps = self.scheduler.timesteps
-            timesteps, num_inference_steps = self.get_timesteps(num_inference_steps, strength)
+            init_timestep = min(int(num_inference_steps * strength), num_inference_steps)
+
+            t_start = max(num_inference_steps - init_timestep, 0)
+            timesteps = self.scheduler.timesteps[t_start * self.scheduler.order :]
+
+            timesteps, num_inference_steps = timesteps, num_inference_steps - t_start
             latent_timestep = timesteps[:1].repeat(batch_size)
 
-            noise = torch.randn(init_latents.shape, generator=generator, device=init_latents.device, dtype=init_latents.dtype)
+            noise = torch.randn(init_latents.shape, device=init_latents.device, dtype=init_latents.dtype)
             init_latents = self.scheduler.add_noise(init_latents, noise, latent_timestep)
             latents = init_latents
+            loop = tqdm(timesteps, desc="Blending")
         else: # If guiding image is not provided I will use random latents
             latents = torch.randn(
-                (batch_size, self.unet.in_channels, height // 8, width // 8),
+                (batch_size, self.unet.config.in_channels, height // 8, width // 8),
                 generator=generator,
             )
-        latents = latents.to(self.args.device).half()
+            latents = latents.to(self.args.device).half()
 
-        self.scheduler.set_timesteps(num_inference_steps)
-        loop = tqdm(timesteps, #self.scheduler.timesteps[int(len(self.scheduler.timesteps) * blending_percentage) :],
-                    desc="Blending", 
-                    #total=len(self.scheduler.timesteps) - int(len(self.scheduler.timesteps) * blending_percentage)
-                )
+            self.scheduler.set_timesteps(num_inference_steps)
+            loop = tqdm(self.scheduler.timesteps[int(len(self.scheduler.timesteps) * blending_percentage) :],
+                        desc="Blending", 
+                        total=len(self.scheduler.timesteps) - int(len(self.scheduler.timesteps) * blending_percentage)
+                    )
         for t in loop:
             # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
             latent_model_input = torch.cat([latents] * 2)
@@ -163,7 +171,7 @@ class BlendedLatentDiffusion:
                 noise_pred = self.unet(
                     latent_model_input, 
                     t, 
-                    encoder_hidden_states=text_embeddings if prompts[0] != "" else None
+                    encoder_hidden_states=text_embeddings
                 ).sample
 
             # perform guidance
@@ -229,7 +237,9 @@ if __name__ == "__main__":
         bld.args.mask,
         prompts=[bld.args.prompt] * bld.args.batch_size,
         guiding_image=bld.args.guiding_image,
+        batch_size=bld.args.batch_size,
         blending_percentage=bld.args.blending_start_percentage,
+        strength=bld.args.strength,
     )
     results_flat = np.concatenate(results, axis=1)
     Image.fromarray(results_flat).save(bld.args.output_path)
