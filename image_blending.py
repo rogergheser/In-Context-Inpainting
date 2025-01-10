@@ -3,15 +3,14 @@ import numpy as np
 from PIL import Image
 import sys
 sys.path.append('/Users/amirgheser/In-Context-Matting/icm')
-from diffusers import DDIMScheduler, StableDiffusionPipeline
-from transformers import CLIPVisionModel, AutoProcessor, CLIPProcessor, CLIPModel
-from icm.models.feature_extractor.dift_sd import FeatureExtractor
+from diffusers import DDIMScheduler, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
+# from icm.models.feature_extractor.dift_sd import FeatureExtractor
 import torch
 from tqdm import tqdm
 
-class DiffusionFeatureExtractor(FeatureExtractor):
-    def __init__(self):
-        super().__init__()
+# class DiffusionFeatureExtractor(FeatureExtractor):
+#     def __init__(self):
+#         super().__init__()
         
     
 class BlendedLatentDiffusion:
@@ -22,7 +21,7 @@ class BlendedLatentDiffusion:
     def parse_args(self):
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--prompt", type=str, required=True, help="The target text prompt"
+            "--prompt", type=str, default="", help="The target text prompt"
         )
         parser.add_argument(
             "--init_image", type=str, required=True, help="The path to the input image"
@@ -33,7 +32,6 @@ class BlendedLatentDiffusion:
         parser.add_argument(
             "--guiding_image",
             type=str,
-            required=True,
             help="The path to the guiding image",
         )
         parser.add_argument(
@@ -62,10 +60,6 @@ class BlendedLatentDiffusion:
         self.args = parser.parse_args()
 
     def load_models(self):
-        clip_model = CLIPVisionModel.from_pretrained("openai/clip-vit-large-patch14")
-        clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14")
-        feature_extractor = DiffusionFeatureExtractor()
-
         pipe = StableDiffusionPipeline.from_pretrained(
             self.args.model_path, torch_dtype=torch.float16,
         )
@@ -73,8 +67,7 @@ class BlendedLatentDiffusion:
         self.tokenizer = pipe.tokenizer
         self.text_encoder = pipe.text_encoder.to(self.args.device)
         self.unet = pipe.unet.to(self.args.device)
-        self.image_encoder = clip_model.to(self.args.device)
-        self.processor = clip_processor
+        self.get_timesteps = StableDiffusionImg2ImgPipeline.from_pipe(pipe).get_timesteps
 
         self.scheduler = DDIMScheduler(
             beta_start=0.00085,
@@ -89,48 +82,74 @@ class BlendedLatentDiffusion:
         self,
         image_path,
         mask_path,
-        guiding_image,
+        prompts=[],
+        guiding_image=None,
         batch_size=1,
         height=512,
         width=512,
         num_inference_steps=50,
         guidance_scale=7.5,
+        strength=0.8,
         generator=torch.manual_seed(42),
-        blending_percentage=0.25,
+        blending_percentage=0.25
     ):
+        # Background image processing
         image = Image.open(image_path)
         image = image.resize((height, width), Image.BILINEAR)
         image = np.array(image)[:, :, :3]
         source_latents = self._image2latent(image)
         latent_mask, org_mask = self._read_mask(mask_path)
 
-        guiding_image = Image.open(guiding_image)
-        guiding_image = guiding_image.resize((height, width), Image.BILINEAR)
-        guiding_image = np.array(guiding_image)[:, :, :3]
-        uncond_guiding_image = np.zeros_like(guiding_image)
+        # Conditioning text processing
+        if prompts[0] != "":
+            text_input = self.tokenizer(
+                prompts,
+                padding="max_length",
+                max_length=self.tokenizer.model_max_length,
+                truncation=True,
+                return_tensors="pt",
+            )
+            text_embeddings = self.text_encoder(text_input.input_ids.to(self.args.device))[0]
 
-        
-        ##
-        # guiding_features = self._encode_image(guiding_image)
-        # uncond_guiding_features = self._encode_image(uncond_guiding_image)
-        guiding_features = self.feature_extractor.get_source_feature(guiding_image)
-        uncond_guiding_features = self.feature_extractor.get_source_feature(uncond_guiding_image)
-        print(guiding_features.shape)
-        guiding_features = torch.cat([uncond_guiding_features, guiding_features]).half()
-        print(guiding_features.shape)
+            max_length = text_input.input_ids.shape[-1]
+            uncond_input = self.tokenizer(
+                [""] * batch_size,
+                padding="max_length",
+                max_length=max_length,
+                return_tensors="pt",
+            )
+            uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(self.args.device))[0]
+            text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
-        latents = torch.randn(
-            (batch_size, self.unet.in_channels, height // 8, width // 8),
-            generator=generator,
-        )
+        # Foreground image processing
+        if guiding_image is not None: # If guiding image is provided
+            guiding_image = Image.open(guiding_image)
+            guiding_image = guiding_image.resize((height, width), Image.BILINEAR)
+            guiding_image = np.array(guiding_image)[:, :, :3]
+            init_latents = self._image2latent(guiding_image).clone()
+            init_latents = torch.cat([init_latents] * batch_size)
+
+            # Add noise to the guiding image
+            self.scheduler.set_timesteps(num_inference_steps)
+            timesteps = self.scheduler.timesteps
+            timesteps, num_inference_steps = self.get_timesteps(num_inference_steps, strength)
+            latent_timestep = timesteps[:1].repeat(batch_size)
+
+            noise = torch.randn(init_latents.shape, generator=generator, device=init_latents.device, dtype=init_latents.dtype)
+            init_latents = self.scheduler.add_noise(init_latents, noise, latent_timestep)
+            latents = init_latents
+        else: # If guiding image is not provided I will use random latents
+            latents = torch.randn(
+                (batch_size, self.unet.in_channels, height // 8, width // 8),
+                generator=generator,
+            )
         latents = latents.to(self.args.device).half()
 
         self.scheduler.set_timesteps(num_inference_steps)
-        loop = tqdm(self.scheduler.timesteps[
-            int(len(self.scheduler.timesteps) * blending_percentage) :
-        ], desc="Blending", total=len(self.scheduler.timesteps) - int(
-            len(self.scheduler.timesteps) * blending_percentage
-        ))
+        loop = tqdm(timesteps, #self.scheduler.timesteps[int(len(self.scheduler.timesteps) * blending_percentage) :],
+                    desc="Blending", 
+                    #total=len(self.scheduler.timesteps) - int(len(self.scheduler.timesteps) * blending_percentage)
+                )
         for t in loop:
             # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
             latent_model_input = torch.cat([latents] * 2)
@@ -142,7 +161,9 @@ class BlendedLatentDiffusion:
             # predict the noise residual
             with torch.no_grad():
                 noise_pred = self.unet(
-                    latent_model_input, t, encoder_hidden_states=guiding_features
+                    latent_model_input, 
+                    t, 
+                    encoder_hidden_states=text_embeddings if prompts[0] != "" else None
                 ).sample
 
             # perform guidance
@@ -206,7 +227,8 @@ if __name__ == "__main__":
     results = bld.edit_image(
         bld.args.init_image,
         bld.args.mask,
-        bld.args.guiding_image,
+        prompts=[bld.args.prompt] * bld.args.batch_size,
+        guiding_image=bld.args.guiding_image,
         blending_percentage=bld.args.blending_start_percentage,
     )
     results_flat = np.concatenate(results, axis=1)
