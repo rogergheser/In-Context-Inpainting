@@ -1,11 +1,13 @@
+import torch
 import argparse
 import numpy as np
-from PIL import Image
 import sys
 sys.path.append('/Users/amirgheser/In-Context-Matting/icm')
+
+from transformers import CLIPProcessor, CLIPModel
 from diffusers import DDIMScheduler, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
 # from icm.models.feature_extractor.dift_sd import FeatureExtractor
-import torch
+from PIL import Image
 from tqdm import tqdm
 
 # class DiffusionFeatureExtractor(FeatureExtractor):
@@ -37,7 +39,8 @@ class BlendedLatentDiffusion:
         parser.add_argument(
             "--model_path",
             type=str,
-            default="stabilityai/stable-diffusion-2-1-base",
+            # default="stabilityai/stable-diffusion-2-1-base",
+            default="CompVis/stable-diffusion-v1-4",
             help="The path to the HuggingFace model",
         )
         parser.add_argument(
@@ -53,15 +56,30 @@ class BlendedLatentDiffusion:
             help="The diffusion steps percentage to jump",
         )
         parser.add_argument("--device", type=str, default="cuda")
+        parser.add_argument("--alpha", type=float, default=0.6)
         parser.add_argument(
             "--output_path",
             type=str,
             default="outputs/res.jpg",
             help="The destination output path",
         )
+        parser.add_argument(
+            "--image_guided_prompt_gen",
+            action="store_true",
+            default=False,
+            help="Whether to use image guided prompt generation",
+        )
 
+        parser.add_argument(
+            "--clip_path",
+            type=str,
+            default="openai/clip-vit-large-patch14",
+            help="The path to the CLIP model",
+        )
+
+            
         self.args = parser.parse_args()
-
+        
     def load_models(self):
         pipe = StableDiffusionPipeline.from_pretrained(
             self.args.model_path, torch_dtype=torch.float16,
@@ -70,6 +88,15 @@ class BlendedLatentDiffusion:
         self.tokenizer = pipe.tokenizer
         self.text_encoder = pipe.text_encoder.to(self.args.device)
         self.unet = pipe.unet.to(self.args.device)
+
+        if self.args.image_guided_prompt_gen:
+            self.image2text_embedder = Image2TextEmbedder(
+                self.args.clip_path,
+                self.args.device, 
+                alpha=self.args.alpha, 
+                onlyprompt=False, 
+                edit=True
+            )
 
         self.scheduler = DDIMScheduler(
             beta_start=0.00085,
@@ -89,7 +116,7 @@ class BlendedLatentDiffusion:
         batch_size=1,
         height=512,
         width=512,
-        num_inference_steps=50,
+        num_inference_steps=100,
         guidance_scale=7.5,
         strength=0.5,
         generator=torch.manual_seed(42),
@@ -102,17 +129,20 @@ class BlendedLatentDiffusion:
         source_latents = self._image2latent(image)
         latent_mask, org_mask = self._read_mask(mask_path)
 
-        # Conditioning text processing
-        text_input = self.tokenizer(
-            prompts,
-            padding="max_length",
-            max_length=self.tokenizer.model_max_length,
-            truncation=True,
-            return_tensors="pt",
-        )
-        text_embeddings = self.text_encoder(text_input.input_ids.to(self.args.device))[0]
+        if self.args.image_guided_prompt_gen:
+            text_embeddings = self._fuse_text_img_embeds(prompts, guiding_image)
+        else:
+            # Conditioning text processing
+            text_input = self.tokenizer(
+                prompts,
+                padding="max_length",
+                max_length=self.tokenizer.model_max_length,
+                truncation=True,
+                return_tensors="pt",
+            )
+            text_embeddings = self.text_encoder(text_input.input_ids.to(self.args.device))[0]
 
-        max_length = text_input.input_ids.shape[-1]
+        max_length = text_embeddings.shape[-2]
         uncond_input = self.tokenizer(
             [""] * batch_size,
             padding="max_length",
@@ -201,6 +231,17 @@ class BlendedLatentDiffusion:
         return images
 
     @torch.no_grad()
+    def _fuse_text_img_embeds(self, prompt, guidance_image):
+        inputs = self.tokenizer(prompt, max_length=self.tokenizer.model_max_length, padding="max_length", truncation=True, return_tensors="pt")
+        text_input = inputs.input_ids.to(self.args.device)
+        text_masks = inputs.attention_mask.to(self.args.device)
+        text_embeddings = self.text_encoder(text_input)[0]
+
+        text_embedding = self.image2text_embedder(guidance_image, text_embeddings, text_masks)
+        
+        return text_embedding
+        
+    @torch.no_grad()
     def _encode_image(self, image):
         image = torch.from_numpy(image)
         input = self.processor(images=image, return_tensors="pt", padding=True).to(self.args.device)
@@ -229,6 +270,48 @@ class BlendedLatentDiffusion:
 
         return mask, org_mask
 
+class Image2TextEmbedder():
+    def __init__(self,
+                 clip_path: str = "openai/clip-vit-large-patch14",
+                 device: str = "cuda",
+                 alpha: float = 0.6,
+                 onlyprompt: bool = False,
+                 edit: bool = False):
+        self.clip_model = CLIPModel.from_pretrained(clip_path).to(device)
+        self.processor = CLIPProcessor.from_pretrained(clip_path)
+        self.inv_text = torch.linalg.pinv(self.clip_model.text_projection.weight, atol=0.3)
+        self.visual_projection = self.clip_model.visual_projection.weight
+        self.alpha = alpha
+        self.onlyprompt = onlyprompt
+        self.edit = edit
+        self.device = device
+
+    def __call__(self, image, text_embeddings, text_masks):
+        image = Image.open(image).convert("RGB")
+        clip_image = self.processor(None, image, return_tensors='pt').pixel_values.to(self.device)
+        image_emb = self.clip_model.vision_model(pixel_values=clip_image)
+        image_emb = image_emb.pooler_output
+
+        image_emb_proj = image_emb @ self.visual_projection.T
+        image_emb_proj = image_emb_proj @ self.inv_text.T
+        image_emb_proj = image_emb_proj / image_emb_proj.norm(dim=1, keepdim=True)
+        image_emb_proj = 27.5 * image_emb_proj # Empirically determined text embedding norm
+
+        convert_text_embeddings = torch.zeros_like(text_embeddings)
+        convert_text_embeddings[:, 0] = text_embeddings[:, 0]
+        convert_text_embeddings[:, 1:] = image_emb_proj.unsqueeze(1)
+
+        convert_edit_embeddings  = text_embeddings.clone()
+        convert_edit_embeddings[:, text_masks.sum(1)[0]-1:] = image_emb_proj.unsqueeze(1) + self.alpha * text_embeddings[:, text_masks.sum(1)[0]-1:]
+
+        if self.onlyprompt:
+            prompt_embeds = text_embeddings
+        elif self.edit:
+            prompt_embeds = convert_edit_embeddings
+        else:
+            prompt_embeds = convert_text_embeddings
+
+        return prompt_embeds.squeeze(0)
 
 if __name__ == "__main__":
     bld = BlendedLatentDiffusion()
