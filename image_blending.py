@@ -112,7 +112,7 @@ class BlendedLatentDiffusion:
         height=512,
         width=512,
         num_inference_steps=100,
-        guidance_scale=12.5,
+        guidance_scale=7.5,
         strength=0.5,
         generator=torch.manual_seed(42),
         blending_percentage=0.25
@@ -127,6 +127,7 @@ class BlendedLatentDiffusion:
         if self.args.image_guided_prompt_gen:
             text_embeddings = self._fuse_text_img_embeds(prompts, guiding_image)
         else:
+            print("Using text embeddings")
             # Conditioning text processing
             text_input = self.tokenizer(
                 prompts,
@@ -261,8 +262,8 @@ class BlendedLatentDiffusion:
         org_mask = Image.open(mask_path).convert("L")
         mask = org_mask.resize(dest_size, Image.NEAREST)
         mask = np.array(mask) / 255
-        mask[mask < 0.5] = 0
-        mask[mask >= 0.5] = 1
+        # mask[mask < 0.5] = 0
+        # mask[mask >= 0.5] = 1
         mask = mask[np.newaxis, np.newaxis, ...]
         mask = torch.from_numpy(mask).half().to(self.args.device)
 
