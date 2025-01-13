@@ -149,6 +149,7 @@ class BlendedLatentDiffusion:
 
         # Foreground image processing
         if guiding_image is not None: # If guiding image is provided
+            guiding_image_name = guiding_image.split("/")[-1].split(".")[0]
             guiding_image = Image.open(guiding_image)
             guiding_image = guiding_image.resize((height, width), Image.BILINEAR)
             guiding_image = np.array(guiding_image)[:, :, :3]
@@ -170,7 +171,7 @@ class BlendedLatentDiffusion:
             noise = torch.randn(init_latents.shape, device=init_latents.device, dtype=init_latents.dtype)
             init_latents = self.scheduler.add_noise(init_latents, noise, latent_timestep)
             latents = init_latents
-            loop = tqdm(timesteps, desc="Blending")
+            loop = tqdm(timesteps, desc="Blending ")
         else: # If guiding image is not provided I will use random latents
             latents = torch.randn(
                 (batch_size, self.unet.config.in_channels, height // 8, width // 8),
@@ -183,6 +184,8 @@ class BlendedLatentDiffusion:
                         desc="Blending", 
                         total=len(self.scheduler.timesteps) - int(len(self.scheduler.timesteps) * blending_percentage)
                     )
+            
+        loop.set_description(f"Blending {guiding_image_name}")
         for t in loop:
             # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
             latent_model_input = torch.cat([latents] * 2)
@@ -277,7 +280,4 @@ if __name__ == "__main__":
         strength=bld.args.strength,
     )
     results_flat = np.concatenate(results, axis=1)
-    Image.fromarray(results_flat).save(bld.args.output_path + "res_"
-                                       + "alpha_" + str(bld.args.alpha)
-                                       + "strength_" + str(bld.args.strength) 
-                                       + ".jpg")
+    Image.fromarray(results_flat).save(bld.args.output_path + "res.jpg")
