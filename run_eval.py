@@ -2,7 +2,6 @@ import os
 import argparse
 import signal
 import subprocess
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', type=str, default='mps')
 parser.add_argument('--alpha', type=float, default=0.2)
@@ -41,18 +40,18 @@ for key in files.keys():
             continue
         os.makedirs(os.path.join(RES_DIR, key, str(idx)), exist_ok=True)
         command = [
-        "python", "image_blending.py",
-        f"--prompt", f"An image of a {key}",
-        f"--init_image", init_image,
-        f"--guiding_image", image,
-        f"--mask", init_mask,
-        f"--device", args.device,
-        "--image_guided_prompt_gen",
-        f"--alpha", args.alpha,
-        f"--strength", args.strength,
-        f"--batch_size", args.batch_size,
-        f"--output_path", f"{RES_DIR}/{key}/{str(idx)}/"
-    ]
+            "python", "image_blending.py",
+            "--prompt", f"An image of a {key}",
+            "--init_image", init_image,
+            "--guiding_image", image,
+            "--mask", init_mask,
+            "--device", str(args.device),
+            "--image_guided_prompt_gen",
+            "--alpha", str(args.alpha),
+            "--strength", str(args.strength),
+            "--batch_size", str(args.batch_size),
+            "--output_path", os.path.join(RES_DIR, key, str(idx))
+        ]
     process = subprocess.Popen(command)
     try:
         process.wait()
