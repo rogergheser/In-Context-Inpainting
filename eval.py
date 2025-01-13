@@ -32,12 +32,12 @@ def parse_args():
     parser.add_argument(
         "--checkpoint",
         type=str,
-        default="",
+        default="model.pth",
     )
     parser.add_argument(
         "--save_path",
         type=str,
-        default="",
+        default="output",
     )
     parser.add_argument(
         "--config",
