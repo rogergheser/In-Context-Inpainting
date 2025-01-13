@@ -33,6 +33,7 @@ os.makedirs(RES_DIR, exist_ok=True)
 for key in files.keys():
     os.makedirs(os.path.join(RES_DIR, key), exist_ok=True)
     init_image = files[key][0][0]
+    init_mask = files[key][0][1]
     for idx, (image, mask) in enumerate(files[key]):
         if idx == 0:
             continue
@@ -41,7 +42,7 @@ for key in files.keys():
                     f" --prompt 'An image of a {key}'" +
                     f" --init_image {init_image} " +
                     f" --guiding_image {image}" +
-                    f" --mask {mask}" +
+                    f" --mask {init_mask}" +
                     f" --device {args.device}" +
                     " --image_guided_prompt_gen" +
                     f" --alpha {args.alpha}" +
