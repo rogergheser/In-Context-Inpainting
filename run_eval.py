@@ -1,5 +1,7 @@
 import os
 import argparse
+import signal
+import subprocess
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', type=str, default='mps')
@@ -38,14 +40,23 @@ for key in files.keys():
         if idx == 0:
             continue
         os.makedirs(os.path.join(RES_DIR, key, str(idx)), exist_ok=True)
-        os.system(f"python image_blending.py" +
-                    f" --prompt 'An image of a {key}'" +
-                    f" --init_image {init_image} " +
-                    f" --guiding_image {image}" +
-                    f" --mask {init_mask}" +
-                    f" --device {args.device}" +
-                    " --image_guided_prompt_gen" +
-                    f" --alpha {args.alpha}" +
-                    f" --strength {args.strength}" +
-                    f" --batch_size {args.batch_size}" +
-                    f" --output_path {RES_DIR}/{key}/{str(idx)}/")
+        command = [
+        "python", "image_blending.py",
+        f"--prompt", f"An image of a {key}",
+        f"--init_image", init_image,
+        f"--guiding_image", image,
+        f"--mask", init_mask,
+        f"--device", args.device,
+        "--image_guided_prompt_gen",
+        f"--alpha", args.alpha,
+        f"--strength", args.strength,
+        f"--batch_size", args.batch_size,
+        f"--output_path", f"{RES_DIR}/{key}/{str(idx)}/"
+    ]
+    process = subprocess.Popen(command)
+    try:
+        process.wait()
+    except KeyboardInterrupt:
+        process.send_signal(signal.SIGINT)
+        process.wait()
+        raise
