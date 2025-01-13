@@ -14,14 +14,13 @@ for dir in os.listdir('inputs'):
     if os.path.isdir('inputs/' + dir):
         files[dir] = []
         for image, mask in zip(
-            os.listdir('inputs/' + dir + '/images/'),
-            os.listdir('inputs/' + dir + '/alphas/')
+            sorted(os.listdir('inputs/' + dir + '/images/')),
+            sorted(os.listdir('inputs/' + dir + '/alphas/'))
         ):
             files[dir].append((
                 'inputs/' + dir + '/images/' + image,
                 'inputs/' + dir + '/alphas/' + mask
                 ))
-        files[dir] = sorted(files[dir], key=lambda x: str(x[0]).split('_')[-1])
 
 # For DEBUG
 for key in files.keys():
@@ -38,7 +37,7 @@ for key in files.keys():
     for idx, (image, mask) in enumerate(files[key]):
         if idx == 0:
             continue
-        os.makedirs(os.path.join(RES_DIR, key, str(idx)), exist_ok=True)
+        os.makedirs(os.path.join(RES_DIR, key), exist_ok=True)
         command = [
             "python", "image_blending.py",
             "--prompt", f"An image of a {key}",
