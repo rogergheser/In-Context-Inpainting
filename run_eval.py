@@ -33,8 +33,8 @@ RES_DIR = 'outputs/a{}_s{}'.format(args.alpha, args.strength)
 os.makedirs(RES_DIR, exist_ok=True)
 for key in files.keys():
     os.makedirs(os.path.join(RES_DIR, key), exist_ok=True)
-    init_image = files[key][0][0]
-    init_mask = files[key][0][1]
+    init_image, init_mask = files[key][0]
+    
     for idx, (image, mask) in enumerate(files[key]):
         if idx == 0:
             continue
@@ -50,12 +50,12 @@ for key in files.keys():
             "--alpha", str(args.alpha),
             "--strength", str(args.strength),
             "--batch_size", str(args.batch_size),
-            "--output_path", os.path.join(RES_DIR, key, str(idx))
+            "--output_path", os.path.join(RES_DIR, key, str(idx)+'_')
         ]
-    process = subprocess.Popen(command)
-    try:
-        process.wait()
-    except KeyboardInterrupt:
-        process.send_signal(signal.SIGINT)
-        process.wait()
-        raise
+        process = subprocess.Popen(command)
+        try:
+            process.wait()
+        except KeyboardInterrupt:
+            process.send_signal(signal.SIGINT)
+            process.wait()
+            raise
