@@ -151,7 +151,7 @@ class BlendedLatentDiffusion:
 
         # Foreground image processing
         guiding_image_name = guiding_image.split("/")[-1].split(".")[0]
-        if guiding_image is not None and False: # If guiding image is provided
+        if guiding_image is not None and strength < 1: # If guiding image is provided
             guiding_image = Image.open(guiding_image)
             guiding_image = guiding_image.resize((height, width), Image.BILINEAR)
             guiding_image = np.array(guiding_image)[:, :, :3]
@@ -268,34 +268,25 @@ class BlendedLatentDiffusion:
 
         return image
 
-    def dilate_mask(self, mask: Image, dilation_factor):
-        # Add padding to the mask
-        padding = dilation_factor // 2
-        padded_mask = ImageOps.expand(mask, border=padding, fill=0)
-        
-        # Convert to NumPy array
-        mask_array = np.array(padded_mask)
-        
-        # Create kernel and dilate
-        kernel = np.ones((dilation_factor, dilation_factor), np.uint8)
-        dilated_mask_array = cv2.dilate(mask_array, kernel, iterations=1)
-        
-        # Convert back to PIL Image and crop to original size
-        dilated_mask = Image.fromarray(dilated_mask_array)
-        width, height = mask.size
-        dilated_mask = dilated_mask.crop((padding, padding, width + padding, height + padding))
+    def dilate_mask(self, mask: Image, kernel_size: int, iterations: int=1):
+        mask = np.array(mask)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kernel_size, kernel_size))
+        dilated_mask = cv2.dilate(mask, kernel, iterations=iterations)
+        dilated_mask = Image.fromarray(dilated_mask)
         
         return dilated_mask
 
     def _read_mask(self, mask_path: str, dest_size=(64, 64), dilate_mask: bool=False):
         org_mask = Image.open(mask_path).convert("L")
-        mask = self.dilate_mask(org_mask, 7)
-        mask = self.blur(mask, 10)
+        dilated_mask = self.dilate_mask(org_mask, 25, 7)
+        mask = self.blur(dilated_mask, 33)
+        mask.save(self.args.output_path + 'mask.png')
+
         mask = mask.resize(dest_size, Image.NEAREST)
-        mask.save('mask.png')
         mask = np.array(mask) / 255
-        # mask[mask < 0.5] = 0
-        # mask[mask >= 0.5] = 1
+        mask[mask < 0.5] = 0
+        mask[mask >= 0.5] = 1
         mask = mask[np.newaxis, np.newaxis, ...]
         mask = torch.from_numpy(mask).half().to(self.args.device)
 

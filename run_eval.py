@@ -3,10 +3,10 @@ import argparse
 import signal
 import subprocess
 parser = argparse.ArgumentParser()
-parser.add_argument('--device', type=str, default='mps')
+parser.add_argument('--device', type=str, default='cuda')
 parser.add_argument('--alpha', type=float, default=0.2)
-parser.add_argument('--strength', type=float, default=0.9)
-parser.add_argument('--batch_size', type=int, default=2)
+parser.add_argument('--strength', type=float, default=0.8)
+parser.add_argument('--batch_size', type=int, default=4)
 args = parser.parse_args()
 
 files = {}
@@ -28,14 +28,16 @@ for key in files.keys():
     for image, mask in files[key]:
         print(image, mask)
 
-RES_DIR = 'outputs_guid12.5M/a{}_s{}'.format(args.alpha, args.strength)
+RES_DIR = 'outputs_guid12.5_blurMask/a{}_s{}'.format(args.alpha, args.strength)
 os.makedirs(RES_DIR, exist_ok=True)
 for key in files.keys():
     os.makedirs(os.path.join(RES_DIR, key), exist_ok=True)
-    init_image, init_mask = files[key][0]
+    init_image, init_mask = files[key][0] if "dog" not in key else files[key][2]
     
     for idx, (image, mask) in enumerate(files[key]):
-        if idx == 0:
+        if idx == 0 and "dog" not in key:
+            continue
+        if idx == 2 and "dog" in key:
             continue
         os.makedirs(os.path.join(RES_DIR, key), exist_ok=True)
         command = [
