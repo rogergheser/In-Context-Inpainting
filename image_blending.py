@@ -2,12 +2,13 @@ import torch
 import argparse
 import numpy as np
 import sys
+import cv2
 sys.path.append('/Users/amirgheser/In-Context-Matting/icm')
 
 from Image2TextEmbedder import Image2TextEmbedder
-from diffusers import DDIMScheduler, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
+from diffusers import DDIMScheduler, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, AutoPipelineForInpainting, StableDiffusionInpaintPipeline
 # from icm.models.feature_extractor.dift_sd import FeatureExtractor
-from PIL import Image
+from PIL import Image, ImageFilter, ImageOps
 from tqdm import tqdm
     
 class BlendedLatentDiffusion:
@@ -83,7 +84,7 @@ class BlendedLatentDiffusion:
         self.tokenizer = pipe.tokenizer
         self.text_encoder = pipe.text_encoder.to(self.args.device)
         self.unet = pipe.unet.to(self.args.device)
-
+        self.mask_processor = AutoPipelineForInpainting.from_pipe(pipe).mask_processor
         if self.args.image_guided_prompt_gen:
             self.image2text_embedder = Image2TextEmbedder(
                 self.args.clip_path,
@@ -112,7 +113,7 @@ class BlendedLatentDiffusion:
         height=512,
         width=512,
         num_inference_steps=100,
-        guidance_scale=7.5,
+        guidance_scale=12.5,
         strength=0.5,
         generator=torch.manual_seed(42),
         blending_percentage=0.25
@@ -149,8 +150,8 @@ class BlendedLatentDiffusion:
         text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
         # Foreground image processing
-        if guiding_image is not None: # If guiding image is provided
-            guiding_image_name = guiding_image.split("/")[-1].split(".")[0]
+        guiding_image_name = guiding_image.split("/")[-1].split(".")[0]
+        if guiding_image is not None and False: # If guiding image is provided
             guiding_image = Image.open(guiding_image)
             guiding_image = guiding_image.resize((height, width), Image.BILINEAR)
             guiding_image = np.array(guiding_image)[:, :, :3]
@@ -216,7 +217,7 @@ class BlendedLatentDiffusion:
             noise_source_latents = self.scheduler.add_noise(
                 source_latents, torch.randn_like(latents), t
             )
-            latents = latents * latent_mask + noise_source_latents * (1 - latent_mask)
+            latents = latents * latent_mask + noise_source_latents * (1.0 - latent_mask)
 
         latents = 1 / 0.18215 * latents
 
@@ -258,9 +259,40 @@ class BlendedLatentDiffusion:
 
         return latents
 
-    def _read_mask(self, mask_path: str, dest_size=(64, 64)):
+    def mask_postprocess(self, mask, blur_factor):
+        # 1. Blur the borders of the mask
+        pass
+
+    def blur(self, image: Image, blur_factor):
+        image = image.filter(ImageFilter.GaussianBlur(blur_factor))
+
+        return image
+
+    def dilate_mask(self, mask: Image, dilation_factor):
+        # Add padding to the mask
+        padding = dilation_factor // 2
+        padded_mask = ImageOps.expand(mask, border=padding, fill=0)
+        
+        # Convert to NumPy array
+        mask_array = np.array(padded_mask)
+        
+        # Create kernel and dilate
+        kernel = np.ones((dilation_factor, dilation_factor), np.uint8)
+        dilated_mask_array = cv2.dilate(mask_array, kernel, iterations=1)
+        
+        # Convert back to PIL Image and crop to original size
+        dilated_mask = Image.fromarray(dilated_mask_array)
+        width, height = mask.size
+        dilated_mask = dilated_mask.crop((padding, padding, width + padding, height + padding))
+        
+        return dilated_mask
+
+    def _read_mask(self, mask_path: str, dest_size=(64, 64), dilate_mask: bool=False):
         org_mask = Image.open(mask_path).convert("L")
-        mask = org_mask.resize(dest_size, Image.NEAREST)
+        mask = self.dilate_mask(org_mask, 7)
+        mask = self.blur(mask, 10)
+        mask = mask.resize(dest_size, Image.NEAREST)
+        mask.save('mask.png')
         mask = np.array(mask) / 255
         # mask[mask < 0.5] = 0
         # mask[mask >= 0.5] = 1

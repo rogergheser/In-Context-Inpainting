@@ -28,7 +28,7 @@ for key in files.keys():
     for image, mask in files[key]:
         print(image, mask)
 
-RES_DIR = 'outputs/a{}_s{}'.format(args.alpha, args.strength)
+RES_DIR = 'outputs_guid12.5M/a{}_s{}'.format(args.alpha, args.strength)
 os.makedirs(RES_DIR, exist_ok=True)
 for key in files.keys():
     os.makedirs(os.path.join(RES_DIR, key), exist_ok=True)
