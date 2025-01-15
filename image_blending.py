@@ -4,11 +4,9 @@ import argparse
 import numpy as np
 import sys
 import cv2
-sys.path.append('/Users/amirgheser/In-Context-Matting/icm')
 
 from Image2TextEmbedder import Image2TextEmbedder
 from diffusers import DDIMScheduler, StableDiffusionPipeline, StableDiffusionImg2ImgPipeline, AutoPipelineForInpainting, StableDiffusionInpaintPipeline
-# from icm.models.feature_extractor.dift_sd import FeatureExtractor
 from PIL import Image, ImageFilter, ImageOps
 from tqdm import tqdm
     
@@ -131,7 +129,7 @@ class BlendedLatentDiffusion:
         batch_size=1,
         height=512,
         width=512,
-        num_inference_steps=50,
+        num_inference_steps=100,
         guidance_scale=12.5,
         strength=0.5,
         generator=torch.manual_seed(42),
@@ -210,7 +208,8 @@ class BlendedLatentDiffusion:
             os.makedirs(self.args.output_path + "steps", exist_ok=True)
             save_every = int(len(loop) * self.args.save_frequency)
         else:
-            save_every = num_inference_steps * 2
+            save_every = num_inference_steps * 2 
+
 
         loop.set_description(f"Blending {guiding_image_name}")
         for idx, t in enumerate(loop):
