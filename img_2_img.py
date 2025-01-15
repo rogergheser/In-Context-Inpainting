@@ -1,3 +1,5 @@
+# Description: Sample code to generate images from text using the Stable Diffusion default pipeline
+
 from diffusers.pipelines import StableDiffusionImg2ImgPipeline
 from diffusers.utils import load_image, make_image_grid
 from Image2TextEmbedder import Image2TextEmbedder
@@ -5,19 +7,15 @@ from PIL import Image
 
 import torch
 
-device = 'mps'
+device = "cuda" if torch.cuda.is_available() else "cpu"
 # use from_pipe to avoid consuming additional memory when loading a checkpoint
 pipeline = StableDiffusionImg2ImgPipeline.from_pretrained("CompVis/stable-diffusion-v1-4"
                                                           ).to(device)
 tokenizer = pipeline.tokenizer
 text_encoder = pipeline.text_encoder
-# img_url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/sdxl-text2img.png"
-# mask_url = "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/diffusers/sdxl-inpaint-mask.png"
-# init_image = load_image(img_url)
-# mask_image = load_image(mask_url)
 
 init_image_path = "blended-latent-diffusion/inputs/img.png"
-init_image = Image.open("blended-latent-diffusion/inputs/img.png")
+init_image = Image.open(init_image_path)
 mask_image = Image.open("blended-latent-diffusion/inputs/mask.png")
 img2text = Image2TextEmbedder(
     clip_path="openai/clip-vit-large-patch14",
