@@ -11,6 +11,7 @@ parser.add_argument('--alpha', type=float, default=0.2)
 parser.add_argument('--strength', type=float, default=0.8)
 parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--output', type=str, default='outputs')
+parser.add_argument('--save_frequency', type=float, default=0.0)
 args = parser.parse_args()
 
 files = {}
@@ -56,7 +57,8 @@ for key in files.keys():
             "--alpha", str(args.alpha),
             "--strength", str(args.strength),
             "--batch_size", str(args.batch_size),
-            "--output_path", os.path.join(RES_DIR, key, str(idx)+'_')
+            "--output_path", os.path.join(RES_DIR, key, str(idx)+'_'),
+            "--save_frequency", str(args.save_frequency)
         ]
         process = subprocess.Popen(command)
         try:

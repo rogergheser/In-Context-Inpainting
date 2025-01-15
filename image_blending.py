@@ -1,3 +1,4 @@
+import os
 import torch
 import argparse
 import numpy as np
@@ -73,6 +74,13 @@ class BlendedLatentDiffusion:
             help="The path to the CLIP model",
         )
 
+        parser.add_argument(
+            "--save_frequency",
+            type=float,
+            default=0,
+            help="The frequency of intermediate steps to save",
+        )
+
             
         self.args = parser.parse_args()
         
@@ -102,6 +110,17 @@ class BlendedLatentDiffusion:
             set_alpha_to_one=False,
         )
 
+    def save_intermediate_step(self, latents, step):
+        latents = 1 / 0.18215 * latents
+        with torch.no_grad():
+            image = self.vae.decode(latents).sample
+        image = (image / 2 + 0.5).clamp(0, 1)
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+        images = (image * 255).round().astype("uint8")
+
+        images_flat = np.concatenate(images, axis=1)
+        Image.fromarray(images_flat).save(f"{self.args.output_path}steps/{step}.png")
+
     @torch.no_grad()
     def edit_image(
         self,
@@ -112,7 +131,7 @@ class BlendedLatentDiffusion:
         batch_size=1,
         height=512,
         width=512,
-        num_inference_steps=100,
+        num_inference_steps=50,
         guidance_scale=12.5,
         strength=0.5,
         generator=torch.manual_seed(42),
@@ -186,9 +205,15 @@ class BlendedLatentDiffusion:
                         desc="Blending", 
                         total=len(self.scheduler.timesteps) - int(len(self.scheduler.timesteps) * blending_percentage)
                     )
-            
+        
+        if self.args.save_frequency > 0:
+            os.makedirs(self.args.output_path + "steps", exist_ok=True)
+            save_every = int(len(loop) * self.args.save_frequency)
+        else:
+            save_every = num_inference_steps * 2
+
         loop.set_description(f"Blending {guiding_image_name}")
-        for t in loop:
+        for idx, t in enumerate(loop):
             # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
             latent_model_input = torch.cat([latents] * 2)
 
@@ -218,6 +243,8 @@ class BlendedLatentDiffusion:
                 source_latents, torch.randn_like(latents), t
             )
             latents = latents * latent_mask + noise_source_latents * (1.0 - latent_mask)
+            if (1 + idx) % save_every == 0:
+                self.save_intermediate_step(latents, idx + 1)
 
         latents = 1 / 0.18215 * latents
 
