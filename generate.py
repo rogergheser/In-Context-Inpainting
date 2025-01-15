@@ -32,7 +32,7 @@ for key in files.keys():
     for image, mask in files[key]:
         print(image, mask)
 
-RES_DIR = f'{args.output}_guid12.5/a{args.alpha}_s{args.strength}'
+RES_DIR = f'{args.output}/guid12.5_a{args.alpha}_s{args.strength}'
 os.makedirs(RES_DIR, exist_ok=True)
 
 for key in files.keys():
