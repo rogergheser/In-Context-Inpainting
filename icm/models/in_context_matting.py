@@ -85,7 +85,7 @@ class InContextMatting(pl.LightningModule):
                        guidance_on_reference_image, source_images)
         
         sample_map = torch.zeros_like(trimaps)
-        sample_map[trimaps==0.5] = 1     
+        sample_map[trimaps==0.5] = 1
         
         loss_dict = self.loss_function(sample_map, outputs, labels)
 

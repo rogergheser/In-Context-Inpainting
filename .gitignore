@@ -9,6 +9,9 @@ pretrained_models/
 datasets/
 lightning_logs/
 old_logs/
+outputs
+output
+venv/
 
 *.pth
 venv/

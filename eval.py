@@ -32,12 +32,12 @@ def parse_args():
     parser.add_argument(
         "--checkpoint",
         type=str,
-        default="",
+        default="model.pth",
     )
     parser.add_argument(
         "--save_path",
         type=str,
-        default="",
+        default="output",
     )
     parser.add_argument(
         "--config",
@@ -110,7 +110,6 @@ if __name__ == '__main__':
     cfg_trainer = cfg.get('trainer')
     # set gpu = 1
     cfg_trainer.gpus = 1
-
 
     # omegaconf to dict
     cfg_trainer = OmegaConf.to_container(cfg_trainer)

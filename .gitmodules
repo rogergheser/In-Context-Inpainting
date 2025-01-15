@@ -1,0 +1,6 @@
+[submodule "blended-latent-diffusion"]
+	path = blended-latent-diffusion
+	url = https://github.com/omriav/blended-latent-diffusion.git
+[submodule "SD-IPC"]
+	path = SD-IPC
+	url = https://github.com/yxding95/SD-IPC

@@ -1,6 +1,7 @@
-<h1 align="center">In-Context Matting [CVPR 2024, Highlight]</h1>
+<h1 align="center">In-Context Inpainting</h1>
+
 DISCLAIMER:
-THE FOLLOWING IS A COPY OF THE <a href="https://github.com/tiny-smart/in-context-matting">TRUE REPOSITORY</a>
+The following is an extension of In-Context Matting [Original repo](https://github.com/tiny-smart/in-context-matting)
 
 <p align="center">
 <a href="https://arxiv.org/pdf/2403.15789.pdf"><img  src="demo/src/icon/arXiv-Paper.svg" ></a>
@@ -9,22 +10,17 @@ THE FOLLOWING IS A COPY OF THE <a href="https://github.com/tiny-smart/in-context
 
 </p>
 
-<h4 align="center">This is the official repository of the paper <a href="https://arxiv.org/abs/2403.15789">In-Context Matting</a>.</h4>
-
-<h4 align="center">Details of the model architecture and experimental results can be found in <a href="https://tiny-smart.github.io/icm.github.io/">our homepage</a>.</h4>
-
-## TODO:
-- [x] Release code
-- [x] Release pre-trained models and instructions for inference
-- [x] Release ICM-57 dataset
-- [ ] Release training dataset and instructions for training
-
 ## Requirements
-We follow the environment setup of [Stable Diffusion Version 2](https://github.com/Stability-AI/StableDiffusion#requirements).
+We follow the environment setup of [In-Context Matting](https://github.com/tiny-smart/in-context-matting) and [Blended Latent Diffusion](https://github.com/omriav/blended-latent-diffusion).
 
 ## Usage
 
-To evaluate the performance on the ICM-57 dataset using the `eval.py` script, follow these instructions:
+To generate images which are the inpainting of different subjects taken in a subset of the ICM-57 dataset, you can simply use`generate.py`
+
+```bash
+python generate.py --output_dir results/
+```
+This program will simply generate a set of images for each of the classes in `inputs/` directory. The first image will be used as a background and the rest will be used to guide the foreground inpainting.
 
 1. **Download the Pretrained Model:**
    - Download the pretrained model from [this link](https://pan.baidu.com/s/1HPbRRE5ZtPRpOSocm9qOmA?pwd=BA1c).
