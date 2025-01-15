@@ -20,13 +20,17 @@ To generate images which are the inpainting of different subjects taken in a sub
 ```bash
 python generate.py --output_dir results/
 ```
-This program will simply generate a set of images for each of the classes in `inputs/` directory. The first image will be used as a background and the rest will be used to guide the foreground inpainting.
+This program will simply generate a set of images for each of the classes in `inputs/` directory. The first image will be used as a background and the rest will be used to guide the foreground for inpainting.
+
+## Using other objects
+
+If you want to use other objects samples from the `ICM57` dataset, first you need to follow the instruction in [In-Context Matting](https://github.com/tiny-smart/in-context-matting) to download the dataset and the model weights.
 
 1. **Download the Pretrained Model:**
    - Download the pretrained model from [this link](https://pan.baidu.com/s/1HPbRRE5ZtPRpOSocm9qOmA?pwd=BA1c).
 
 2. **Prepare the dataset:**
-   Ensure that your ICM-57 is ready.
+   Ensure that your ICM-57 is ready following the dataset section.
 
 3. **Run the Evaluation:**
    Use the following command to run the evaluation script. Replace the placeholders with the actual paths if they differ.
@@ -34,6 +38,7 @@ This program will simply generate a set of images for each of the classes in `in
    ```bash
    python eval.py --checkpoint PATH_TO_MODEL --save_path results/ --config config/eval.yaml
    ```
+Now, you just need to move the results to the `inputs/` directory and run the `generate.py` script.
 
 ### Dataset
 **ICM-57**
@@ -47,15 +52,8 @@ This program will simply generate a set of images for each of the classes in `in
      └── alpha
      ```
 
-### Acknowledgments
+## Contributors
+- [Amir Gheser](https://github.com/rogergheser)
+- [Alessio Pierdominici](https://github.com/EXINEF)
+- [Matteo Mascherin](https://github.com/MatteoMaske)
 
-We would like to express our gratitude to the developers and contributors of the [DIFT](https://github.com/Tsingularity/dift) and [Prompt-to-Prompt](https://github.com/google/prompt-to-prompt/) projects. Their shared resources and insights have significantly aided the development of our work.
-
-## Statement
-
-<!-- If you are interested in our work, please consider citing the following:
-```
-
-``` -->
-
-This project is under the MIT license. For technical questions, please contact <strong><i>He Guo</i></strong> at [hguo01@hust.edu.cn](mailto:hguo01@hust.edu.cn). For commerial use, please contact <strong><i>Hao Lu</i></strong> at [hlu@hust.edu.cn](mailto:hlu@hust.edu.cn)
