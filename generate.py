@@ -8,7 +8,7 @@ from image_blending import BlendedLatentDiffusion
 parser = argparse.ArgumentParser()
 parser.add_argument('--device', type=str, default='cuda')
 parser.add_argument('--alpha', type=float, default=0.2)
-parser.add_argument('--strength', type=float, default=0.8)
+parser.add_argument('--strength', type=float, default=0.5)
 parser.add_argument('--batch_size', type=int, default=4)
 parser.add_argument('--output', type=str, default='outputs')
 parser.add_argument('--save_frequency', type=float, default=0.0)
