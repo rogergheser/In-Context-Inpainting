@@ -9,21 +9,55 @@ The following is an extension of In-Context Matting [Original repo](https://gith
 <a href="https://opensource.org/licenses/MIT"><img  src="demo/src/icon/license-MIT.svg"></a>
 
 </p>
+Some results
+<table align="center">
+  <tr>
+      <td>Source Image</td>
+      <td>Alpha Mask</td>
+      <td>Guidance Image</td>
+      <td>Result</td>
+  <tr>
+    <td><img src="inputs/backpack/images/backpack_02.jpg" alt="backpack original" height="100px"></td>
+    <td><img src="inputs/backpack/alphas/backpack_02.png" alt="backpack alpha" height="100px"></td>
+    <td><img src="inputs/backpack/images/backpack_05.jpg" alt="backpack guidance" height="100px"></td>
+    <td><img src="outputs/outputs_guid7.5_a0_s1/backpack/1_res.jpg" alt="backpack result" height="100px"></td>
+  </tr>
+  <tr>
+    <td><img src="inputs/bear/images/bear_plushie_00.jpg" alt="bear plushie original" height="100px"></td>
+    <td><img src="inputs/bear/alphas/bear_plushie_00.png" alt="bear plushie alpha" height="100px"></td>
+    <td><img src="inputs/bear/images/bear_plushie_04.jpg" alt="bear plushie guidance" height="100px"></td>
+    <td><img src="outputs/outputs_guid7.5_a0_s1/bear/4_res.jpg" alt="bear plushie result" height="100px"></td>
+  </tr>
+  <tr>
+    <td><img src="inputs/dog/images/dog3_00.jpg" alt="dog original" height="100px"></td>
+    <td><img src="inputs/dog/alphas/dog3_00.png" alt="dog alpha" height="100px"></td>
+    <td><img src="inputs/dog/images/dog6_00.jpg" alt="dog guidance" height="100px"></td>
+    <td><img src="outputs/outputs_guid7.5_a0_s1/dog/1_res.jpg" alt="dog result" height="100px"></td>
+  </tr>
+</table>
 
 ## Requirements
-We follow the environment setup of [In-Context Matting](https://github.com/tiny-smart/in-context-matting) and [Blended Latent Diffusion](https://github.com/omriav/blended-latent-diffusion).
+We follow the environment setup of [In-Context Matting](https://github.com/tiny-smart/in-context-matting) and [Blended Latent Diffusion](https://github.com/omriav/blended-latent-diffusion), please refer to their repos.
 
 ## Usage
-
-To generate images which are the inpainting of different subjects taken in a subset of the ICM-57 dataset, you can simply use`generate.py`
-
+For the purpose of our demo you may generate images which are the inpainting of different subjects taken in a subset of the ICM-57 dataset, you can simply use`generate.py`
 ```bash
 python generate.py --output_dir results/
 ```
 This program will simply generate a set of images for each of the classes in `inputs/` directory. The first image will be used as a background and the rest will be used to guide the foreground for inpainting.
 
-## Using other objects
+### Generating only one sample
+If you want to generate only one sample, you can use the following command:
 
+```bash
+python image_blending.py --prompt <prompt> --init_image <init_image> --mask <mask> --guiding_image <guiding_image> 
+```
+For more information on the arguments, you can use the following command:
+```bash
+python image_blending.py --help
+```
+
+## Using other objects
 If you want to use other objects samples from the `ICM57` dataset, first you need to follow the instruction in [In-Context Matting](https://github.com/tiny-smart/in-context-matting) to download the dataset and the model weights.
 
 1. **Download the Pretrained Model:**

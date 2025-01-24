@@ -3,8 +3,6 @@ import torch
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
 
-
-
 class Image2TextEmbedder():
     def __init__(self,
                  clip_path: str = "openai/clip-vit-large-patch14",
