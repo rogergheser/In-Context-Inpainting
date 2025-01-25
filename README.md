@@ -20,19 +20,19 @@ Some results
     <td><img src="inputs/backpack/images/backpack_02.jpg" alt="backpack original" height="100px"></td>
     <td><img src="inputs/backpack/alphas/backpack_02.png" alt="backpack alpha" height="100px"></td>
     <td><img src="inputs/backpack/images/backpack_05.jpg" alt="backpack guidance" height="100px"></td>
-    <td><img src="outputs/outputs_guid7.5_a0_s1/backpack/1_res.jpg" alt="backpack result" height="100px"></td>
+    <td><img src="images/backpack_1_res.jpg" alt="backpack result" height="100px"></td>
   </tr>
   <tr>
     <td><img src="inputs/bear/images/bear_plushie_00.jpg" alt="bear plushie original" height="100px"></td>
     <td><img src="inputs/bear/alphas/bear_plushie_00.png" alt="bear plushie alpha" height="100px"></td>
     <td><img src="inputs/bear/images/bear_plushie_04.jpg" alt="bear plushie guidance" height="100px"></td>
-    <td><img src="outputs/outputs_guid7.5_a0_s1/bear/4_res.jpg" alt="bear plushie result" height="100px"></td>
+    <td><img src="images/bear_plushie_4_res.jpg" alt="bear plushie result" height="100px"></td>
   </tr>
   <tr>
     <td><img src="inputs/dog/images/dog3_00.jpg" alt="dog original" height="100px"></td>
     <td><img src="inputs/dog/alphas/dog3_00.png" alt="dog alpha" height="100px"></td>
     <td><img src="inputs/dog/images/dog6_00.jpg" alt="dog guidance" height="100px"></td>
-    <td><img src="outputs/outputs_guid7.5_a0_s1/dog/1_res.jpg" alt="dog result" height="100px"></td>
+    <td><img src="images/dog3_1_res.jpg" alt="dog result" height="100px"></td>
   </tr>
 </table>
 
