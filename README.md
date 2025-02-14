@@ -1,7 +1,6 @@
 <h1 align="center">In-Context Inpainting</h1>
 
-DISCLAIMER:
-The following is an extension of In-Context Matting [Original repo](https://github.com/tiny-smart/in-context-matting)
+Data is taken as output of In-Context Matting [Original repo](https://github.com/tiny-smart/in-context-matting)
 
 <p align="center">
 <a href="https://arxiv.org/pdf/2403.15789.pdf"><img  src="demo/src/icon/arXiv-Paper.svg" ></a>
